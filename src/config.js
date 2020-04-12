@@ -121,6 +121,8 @@ const defaultConfig = {
   "knex": null,
 
   "logDir": path.join(__dirname, '..', 'logs'),
+
+  "assignedExpiresAfterSecs": 30 * 60,
 };
 
 // Load config values from environment variables

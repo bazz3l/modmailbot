@@ -36,6 +36,11 @@ class Thread {
    * @returns {Promise<boolean>} Whether we were able to send the reply
    */
   async replyToUser(moderator, text, replyAttachments = [], isAnonymous = false) {
+    if (!await this.isAssignedToMember(moderator.id)) {
+      await this.postSystemMessage('Thread is currently assigned to another staff member');
+      return false;
+    }
+
     // Username to reply with
     let modUsername, logModUsername;
     const mainRole = utils.getMainRole(moderator);
@@ -462,6 +467,53 @@ class Thread {
    */
   getLogUrl() {
     return utils.getSelfUrl(`logs/${this.id}`);
+  }
+
+  /**
+   *
+   * @param {String} userId
+   * @return {Promise<boolean>}
+   */
+  async isAssignedToMember(userId) {
+    if (!this.assigned_member_id || (!!this.assigned_expires_at && this.assigned_expires_at < new Date)) {
+      await this.assignToMember(userId);
+      await this.updateAssignedExpiry();
+
+      return true;
+    }
+
+    if (this.assigned_member_id === userId) {
+      await this.updateAssignedExpiry();
+
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   *
+   * @param {String} userId
+   * @return {Promise<void>}
+   */
+  async assignToMember(userId) {
+    await knex('threads')
+        .where('id', this.id)
+        .update({
+          assigned_member_id: userId,
+        });
+  }
+
+  /**
+   *
+   * @return {Promise<void>}
+   */
+  async updateAssignedExpiry() {
+    await knex('threads')
+        .where('id', this.id)
+        .update({
+          assigned_expires_at: new Date(Date.now() + (config.assignedExpiresAfterSecs * 1000)),
+        });
   }
 }
 
